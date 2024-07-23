@@ -1,0 +1,106 @@
+{
+    "data":{
+        "train": "/scratch/jx8fh/2024-06-22-MICCAI-ShapeMI-Workshop-data/lamod_train.npy",
+        "val": "/scratch/jx8fh/2024-06-22-MICCAI-ShapeMI-Workshop-data/lamod_val.npy",
+        "test": "/scratch/jx8fh/2024-06-22-MICCAI-ShapeMI-Workshop-data/lamod_test.npy"
+    },
+    "datasets":{
+        "train": {"forward_src_tar_pair": false},
+        "val": {"forward_src_tar_pair": false},
+        "test": {"forward_src_tar_pair": false}
+    },
+    "networks": {
+        "motion_regression":{
+            "type": "TransUNet3D",
+            "input_channels": 1,
+            "num_classes": 2,
+            "base_num_features": 32
+        }
+    },
+    "training":{
+        "seed": 2434,
+        "scheme": "regression",
+        "batch_forward_method": "whole_vol",
+        "regression_output_type": "disp",
+        "resize_before_regression": true,
+        "batch_size": 4,
+        "epochs": 500,
+        "enable_random_rotate": false,
+        "random_rotate_prob_thres": 0.3,
+        "epochs_without_improvement_tolerance": 30,
+        "disp_masking": true,
+        "disp_mask_key": "src_tar_disp_union_mask",
+        "disp_generator": "none",
+        "save_best_model_interval": -1,
+        "training_latent_model_epoch_interval": 30,
+        "training_motion_decoder_epoch_interval": 30,
+        "optimization": {
+            "motion_regression": {
+                "type": "Adam",
+                "target": "motion_regression",
+                "weight_decay": 1e-5,
+                "learning_rate": 1e-4,
+                "lr_scheduler": {
+                    "enable": true,
+                    "type": "StepLR",
+                    "step_size": 15,
+                    "gamma": 0.9
+                }
+            }
+        }
+    },
+    "losses": {
+        "DENSE_disp_reconstruction_L1":{
+            "type": "regression",
+            "prediction": "DENSE_disp",
+            "target": "DENSE_disp",
+            "weight": 1,
+            "criterion": "l1",
+            "enable": true,
+            "regularization_weight": 1
+        },
+        "DENSE_disp_reconstruction_MSE":{
+            "type": "regression",
+            "prediction": "DENSE_disp",
+            "target": "DENSE_disp",
+            "weight": -1,
+            "criterion": "MSE",
+            "enable": false,
+            "regularization_weight": 1
+        },
+        "DENSE_disp_reconstruction_EPE":{
+            "type": "regression",
+            "prediction": "DENSE_disp",
+            "target": "DENSE_disp",
+            "weight": 1,
+            "criterion": "EPE",
+            "enable": false,
+            "regularization_weight": 1
+        }
+    },
+    "evaluation": {
+        "DENSE_disp_reconstruction_error": {
+            "enable": true,
+            "weight": 1,
+            "prediction": "DENSE_disp",
+            "target": "DENSE_disp",
+            "criterion": "MSE"
+        }
+    },
+    "saving": {
+        "data_keys_to_pop": ["velocity_pred", "deformed_source_pred"],
+        "save_final_model": true,
+        "save_best_only": true,
+        "save_model_num": 3,
+        "save_prediction_method": "single_file",
+        "performance_log_dir": "/p/mmcardiac/Resaerch_projects/cardiac/cardiac-segmentation/cardiac-segmentation-2/codeV6/exp_results/wandb_sweep_logs",
+        "save_checkpoint": true,
+        "save_prediction": false,
+        "save_KeyboardInterrupt": true
+    },
+    "others": {
+        "use_wandb": true,
+        "wandb_sweep_file": "./configs/test_wandb_sweep.yaml",
+        "wandb_visualize_interval": 0.1
+    }
+}

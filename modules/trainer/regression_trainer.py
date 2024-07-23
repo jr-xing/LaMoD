@@ -16,7 +16,8 @@ from models.diffusion.ddpm import q_sample, p_sample, p_sample_loop
 from modules.data.processing.rotation import rot_img_seq, rotate_displacement_field_seq
 # lm.FluidMetric(self.fluid_params)
 import lagomorph as lm
-from train_denoisier_video_diffusion import latent_1_std, latent_std_scaler, latent_log_scaler, latent_plus_mins_1_scaler, latent_standardize, latent_1_std_reverse, latent_std_reverse, latent_log_reverse, latent_plus_mins_1_reverse, latent_unstandardize
+# from train_denoisier_video_diffusion import latent_1_std, latent_std_scaler, latent_log_scaler, latent_plus_mins_1_scaler, latent_standardize, latent_1_std_reverse, latent_std_reverse, latent_log_reverse, latent_plus_mins_1_reverse, latent_unstandardize
+from modules.trainer.normalize import latent_1_std, latent_std_scaler, latent_log_scaler, latent_plus_mins_1_scaler, latent_standardize, latent_1_std_reverse, latent_std_reverse, latent_log_reverse, latent_plus_mins_1_reverse, latent_unstandardize
 
 class DummyLrScheduler:
     """
@@ -112,9 +113,16 @@ class RegressionTrainer(BaseTrainer):
     def batch_forward(self, batch, models, loss_name_prefix, mode='train', train_config={}, full_config={}, curr_epoch=-1):
         batch_forward_method = train_config.get('batch_forward_method', 'myo_mask')
         if batch_forward_method in ['img', 'myo_mask']:
-            # Use only image or binary mask as input
+            # Use only image or binary mask as input            
             # This is for pre-training the registration model or training the baseline methods
+            # Note that in this function the input are organized as source-target volume pairs, 
+            # which both are included in a tensor with shape (N, 2, T, H, W)
             return self.batch_forward_img(batch, models, loss_name_prefix, mode, train_config, full_config, curr_epoch)
+        elif batch_forward_method == 'whole_vol':
+            # Feed the whole volume into the network without making it source-target pair as in the batch_forward_img() case
+            # This is particularlly plausible for fully convolutional networks such as StrainNet 
+            # by allowing the input volumes to have different sizes
+            return self.batch_forward_whole_vol(batch, models, loss_name_prefix, mode, train_config, full_config, curr_epoch)
         elif batch_forward_method == 'reg_disp_pred':
             # First extract latent motion features and then reconstruct the final motion
             # No diffusion model included. This is just for pre-training the motion encoder.
@@ -122,7 +130,7 @@ class RegressionTrainer(BaseTrainer):
         elif batch_forward_method == 'reg_disp_pred_diffusion':
             # First extract latent motion features, then refine the features throught the diffusion process, and finally reconstruct the final motion.
             # This is for jointly training our proposed LaMoD Method
-            return self.batch_forward_reg_disp_pred_diffusion(batch, models, loss_name_prefix, mode, train_config, full_config, curr_epoch)    
+            return self.batch_forward_reg_disp_pred_diffusion(batch, models, loss_name_prefix, mode, train_config, full_config, curr_epoch)            
         else:
             raise ValueError(f'batch_forward_method {batch_forward_method} not implemented')
     
@@ -207,7 +215,7 @@ class RegressionTrainer(BaseTrainer):
         
         pred_dict = {
             'reg_disp': reg_pred_disp,
-            # 'DENSE_mask': DENSE_mask,
+            'DENSE_mask': DENSE_mask,
             # 'DENSE_disp': DENSE_disp_pred,
             # 'tar': Sdef,
             'DENSE_disp': DENSE_disp_pred,
@@ -386,7 +394,7 @@ class RegressionTrainer(BaseTrainer):
         pred_dict = {
             'reg_disp': reg_pred_disp,
             'noise': pred_noise,
-            # 'DENSE_mask': DENSE_mask,
+            'DENSE_mask': DENSE_mask,
             # 'DENSE_disp': DENSE_disp_pred,
             # 'tar': Sdef,
             'DENSE_disp': DENSE_disp_pred,
@@ -485,7 +493,7 @@ class RegressionTrainer(BaseTrainer):
 
         pred_dict = {
             # 'reg_disp': reg_disp_pred,
-            # 'DENSE_mask': DENSE_mask,
+            'DENSE_mask': DENSE_mask,
             'src': src,
             'tar': tar,
             'DENSE_disp': DENSE_disp_pred,
@@ -520,11 +528,99 @@ class RegressionTrainer(BaseTrainer):
         # pred_dict = {f'{loss_name_prefix}/{k}': v for k, v in pred_dict.items()}
         return total_loss, batch_loss_dict, batch_error_dict, pred_dict, target_dict
 
-    
+    def batch_forward_whole_vol(self, batch, models, loss_name_prefix, mode='train', train_config={}, full_config={}, curr_epoch=-1, force_augment=False):
+        """
+        Forward a video volumes (assuming all videos have same length or the batch size is 1).
+        No source / target
+        """
+        # Get model
+        motion_regression_model = models['motion_regression']
+
+        # get data
+        vol = batch['vol'].to(dtype=torch.float32)
+        vol_ori_n_frames = batch['ori_n_frames']
+        DENSE_disp_GT = batch['disp'].to(dtype=torch.float32)
+
+        # Augmentation by random rotation
+        if (train_config.get('enable_random_rotate', False) and mode in ['training', 'train']) or force_augment:
+            random_rotate_prob_thres = train_config.get('random_rotate_prob_thres', 0.3)
+            random_rotate_prob = np.random.uniform(0, 1)
+            if (random_rotate_prob < random_rotate_prob_thres) and not force_augment:
+                pass
+            else:
+                rotator_idx = random.choice(range(len(self.rotation_angles)))
+                vol = self.img_seq_rotators[rotator_idx](vol)
+                DENSE_disp_GT = self.disp_seq_rotators[rotator_idx](DENSE_disp_GT)
+
+        # resize if necessary
+        if train_config.get('resize_before_regression', False):
+            vol = self.displacement_field_resizer(vol)
+            # DENSE_disp_GT = self.displacement_field_resizer(DENSE_disp_GT)
+
+        vol = vol.to(self.device, dtype=torch.float32)
+        DENSE_disp_pred = motion_regression_model(vol)
+
+        if train_config.get('resize_before_masking', False):
+            DENSE_disp_pred = self.displacement_field_resizer_128(DENSE_disp_pred)
+            DENSE_disp_GT = self.displacement_field_resizer_128(DENSE_disp_GT)
+
+        DENSE_disp_GT = DENSE_disp_GT.to(self.device)
+        if train_config.get('disp_masking', True):            
+            DENSE_mask = (torch.abs(DENSE_disp_GT)> 1e-10).to(DENSE_disp_pred.dtype)
+            DENSE_disp_pred = DENSE_disp_pred * DENSE_mask
+
+        # zero the padded frames according to vol_ori_n_frames
+        # which contains the # of valid frame for each data in the batch
+        for i, ori_n_frames in enumerate(vol_ori_n_frames):
+            DENSE_disp_pred[i, :, ori_n_frames:] = 0
+        
+
+        pred_dict = {
+            'DENSE_disp': DENSE_disp_pred,
+            "DENSE_mask": DENSE_mask,
+        }
+        target_dict = {
+            'DENSE_disp': DENSE_disp_GT,
+            "DENSE_disp_mask": DENSE_mask,
+        }
+        
+        
+        if mode in ['training', 'train']:
+            total_loss, losses_values_dict = self.loss_calculator(pred_dict, target_dict)
+        elif mode == 'test':
+            with torch.no_grad():
+                total_loss, losses_values_dict = self.loss_calculator(pred_dict, target_dict)
+        
+        with torch.no_grad():
+            total_error, error_values_dict = self.evaluator(pred_dict, target_dict)
+
+        # update the epoch loss dict
+        batch_loss_dict = {}
+        for loss_name, loss_value in losses_values_dict.items():
+            record_name = f'{loss_name_prefix}/{loss_name}'
+            batch_loss_dict[record_name] = loss_value
+        
+        # update the epoch error 
+        batch_error_dict = {}
+        for error_name, error_value in error_values_dict.items():
+            record_name = f'{loss_name_prefix}/{error_name}'
+            batch_error_dict[record_name] = error_value
+
+        return total_loss, batch_loss_dict, batch_error_dict, pred_dict, target_dict
+
     def batch_eval(self, batch_pred, batch):
         return {}
 
-    def plot_results(self, data: list, save_fig_dir: str or Path or None=None, save_plot=False, plot_frame_idx=10, n_plot = 5, n_plot_patients=-1, DENSE_quiver_scale=75, reg_quiver_scale=200):
+    def plot_results(
+        self, 
+        data: list, 
+        save_fig_dir: str or Path or None=None, 
+        save_plot=False, 
+        plot_frame_idx=10, 
+        n_plot = 5, 
+        n_plot_patients=-1, 
+        DENSE_quiver_scale=1, 
+        reg_quiver_scale=1):
         data_to_plot = data[:n_plot] if n_plot > 0 else data
         for datum in data_to_plot:
             patient_id = datum['subject_id']
@@ -533,19 +629,40 @@ class RegressionTrainer(BaseTrainer):
             # vis_idx = 30
             vis_frame_idx = 5
             # scale = 45
-            axs[0,0].imshow(datum['src'][0,vis_frame_idx].astype(float), cmap='gray')
-            axs[0,0].set_title('Source image')
-            axs[0,0].invert_yaxis()
-            axs[0,1].imshow(datum['tar'][0,vis_frame_idx].astype(float), cmap='gray')
-            axs[0,1].set_title('Target image')
-            axs[0,1].invert_yaxis()            # reverse the y axis
-            axs[0,2].imshow(datum['tar'][0,vis_frame_idx].astype(float) - datum['src'][0,vis_frame_idx].astype(float), cmap='gray')
-            axs[0,2].set_title('Target - Source image')
-            axs[0,2].invert_yaxis()            # reverse the y axis
+            if 'vol' in datum.keys() and 'src' not in datum.keys():
+                axs[0,0].imshow(datum['vol'][0,0].astype(float), cmap='gray')
+                axs[0,0].set_title('Source image')
+                axs[0,0].invert_yaxis()
+                axs[0,1].imshow(datum['vol'][0,vis_frame_idx+1].astype(float), cmap='gray')
+                axs[0,1].set_title('Target image')
+                axs[0,1].invert_yaxis()            # reverse the y axis
+                axs[0,2].imshow(datum['vol'][0,vis_frame_idx+1].astype(float) - datum['vol'][0,0].astype(float), cmap='gray')
+                axs[0,2].set_title('Target - Source image')
+                axs[0,2].invert_yaxis()            # reverse the y axis
+            elif 'vol' not in datum.keys() and 'src' in datum.keys():
+                axs[0,0].imshow(datum['src'][0,vis_frame_idx].astype(float), cmap='gray')
+                axs[0,0].set_title('Source image')
+                axs[0,0].invert_yaxis()
+                axs[0,1].imshow(datum['tar'][0,vis_frame_idx].astype(float), cmap='gray')
+                axs[0,1].set_title('Target image')
+                axs[0,1].invert_yaxis()            # reverse the y axis
+                axs[0,2].imshow(datum['tar'][0,vis_frame_idx].astype(float) - datum['src'][0,vis_frame_idx].astype(float), cmap='gray')
+                axs[0,2].set_title('Target - Source image')
+                axs[0,2].invert_yaxis()            # reverse the y axis
+            else:
+                raise ValueError('Cannot have both vol and src')
 
-            axs[1,0].quiver(datum['DENSE_disp'][0,vis_frame_idx], datum['DENSE_disp'][1,vis_frame_idx], scale=DENSE_quiver_scale)
+            axs[1,0].quiver(
+                datum['DENSE_disp'][0,vis_frame_idx], 
+                datum['DENSE_disp'][1,vis_frame_idx], 
+                units='xy',
+                scale=DENSE_quiver_scale)
             axs[1,0].set_title('GT DENSE displacement')
-            axs[1,1].quiver(datum['DENSE_disp_pred'][0,vis_frame_idx], datum['DENSE_disp_pred'][1,vis_frame_idx], scale=DENSE_quiver_scale)
+            axs[1,1].quiver(
+                datum['DENSE_disp_pred'][0,vis_frame_idx], 
+                datum['DENSE_disp_pred'][1,vis_frame_idx], 
+                units='xy',
+                scale=DENSE_quiver_scale)
             axs[1,1].set_title('Predicted DENSE displacement')
             # hide axis[1,2]
             axs[1,2].axis('off')

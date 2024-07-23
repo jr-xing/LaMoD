@@ -27,16 +27,16 @@ class VideoVolDataset(TorchDataset):
             return self.get_single_volume(index)
     
     def get_src_tar_pair(self, index):
-        vol = self.data[index][self.img_key]         # [H, W, Nfr]
-        disp = self.data[index][self.DENSE_disp_key] # [2, H, W, Nfr]
+        vol = self.data[index][self.img_key]         # [1, Nfr, H, W]
+        disp = self.data[index][self.DENSE_disp_key] # [2, Nfr, H, W]
         ori_n_frames = self.data[index]['ori_n_frames']
-        Nfr = vol.shape[-1]
+        Nfr = vol.shape[1]
 
-        vol = np.moveaxis(vol, -1, 0)[None, ...]     # [1, Nfr, H, W]
+        # vol = np.moveaxis(vol, -1, 0)[None, ...]     # [1, Nfr, H, W]
         src = np.repeat(vol[:, 0:1], Nfr-1, axis=1)  # [1, Nfr-1, H, W]
         tar = vol[:, 1:]                             # [1, Nfr-1, H, W]
-        disp = np.moveaxis(disp, -1, 1)              # [2, Nfr, H, W]
-
+        # disp = np.moveaxis(disp, -1, 1)              # [2, Nfr, H, W]
+        # print(f'{vol[:, 0:1].shape=}')
         datum = {
             'src': src,
             'tar': tar,
@@ -55,14 +55,17 @@ class VideoVolDataset(TorchDataset):
                 datum[k] = torch.Tensor([v]).to(torch.float32)
             elif isinstance(v, int):
                 datum[k] = torch.Tensor([v]).to(torch.long)
+        
+        # print("datum['src'].shape: ", datum['src'].shape)
+
         return datum
     
     def get_single_volume(self, index):
-        img = self.data[index][self.img_key]         # [H, W, Nfr]
-        disp = self.data[index][self.DENSE_disp_key] # [2, H, W, Nfr]
+        img = self.data[index][self.img_key]         # [1, Nfr, H, W, ]
+        disp = self.data[index][self.DENSE_disp_key] # [2, Nfr, H, W]
 
-        img = np.moveaxis(img, -1, 0)[None, ...]     # [1, Nfr, H, W]
-        disp = np.moveaxis(disp, -1, 1)              # [2, Nfr, H, W]
+        # img = np.moveaxis(img, -1, 0)[None, ...]     # [1, Nfr, H, W]
+        # disp = np.moveaxis(disp, -1, 1)              # [2, Nfr, H, W]
 
         datum = {
             'vol': img,

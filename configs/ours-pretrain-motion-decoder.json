@@ -20,8 +20,8 @@
             "unet_output": "velocity",
             "max_pool": [[1,2,2],[1,2,2],[1,2,2],[1,2,2]],
             "nb_features": "[[8, 16, 16], [16, 16, 16, 8, 8]]",
-            "load_pretrained": false,
-            "pretrained_model_path": ""
+            "load_pretrained": true,
+            "pretrained_model_path": "/home/jx8fh/Projects/LaMoD/checkpoints/registration.pth"
         },
         "motion_regression":{
             "type": "DiffusionDecoder",
@@ -57,7 +57,6 @@
         "epochs_without_improvement_tolerance": 30,
         "disp_masking": true,
         "disp_mask_key": "src_tar_disp_union_mask",
-        "disp_generator": "none",
         "save_best_model_interval": -1,
         "training_latent_model_epoch_interval": 30,
         "training_motion_decoder_epoch_interval": 30,
