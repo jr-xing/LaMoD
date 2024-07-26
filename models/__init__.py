@@ -38,7 +38,7 @@ def build_model(model_config, all_config=None, skip_load_pretrained=False):
         if model_config['Diffusion'].get('beta_schedule_overwrite', False):
             
             # diffusion.beta_schedule = model_config['Diffusion']['beta_schedule']
-            from models.video_diffusion.video_diffusion_pytorch import linear_beta_schedule, cosine_beta_schedule            
+            from models.diffusion.video_diffusion_pytorch import linear_beta_schedule, cosine_beta_schedule            
             # betas = linear_beta_schedule(model.betas.shape[0], scale=model_config['Diffusion']['beta_schedule_scale'])
             timesteps = diffusion.betas.shape[0]
             beta_schedule_method = model_config['Diffusion']['beta_schedule_method']
