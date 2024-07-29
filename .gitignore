@@ -1,4 +1,4 @@
-debug/
+#debug/
 checkpoints/
 **/__pycache__/
 test_results/
