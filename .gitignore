@@ -1,5 +1,6 @@
 #debug/
-checkpoints/
+# checkpoints/
+*.pth
 **/__pycache__/
 test_results/
 
