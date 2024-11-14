@@ -24,7 +24,7 @@ def generate_binary_mask_from_contour(contour, image_shape, implementation='skim
         cv2.drawContours(mask, [c.astype(int)], 0, 255, -1)
     return mask
 
-def generate_binary_masks_from_contour_seq(contours, image_shape, implementation='skimg', centering=True, ori_center=None):
+def generate_binary_masks_from_contour_seq(contours, image_shape, implementation='skimg', centering=True, contour_ori_center=None):
     """
     Generates a binary mask from a sequence of 2D contours.
     
@@ -43,22 +43,52 @@ def generate_binary_masks_from_contour_seq(contours, image_shape, implementation
     # if centering and center is not None:
     #     image_center = np.array(image_shape) / 2
     if centering:
-        #if center is None:
-        #    image_center = np.array(image_shape) / 2
-        #else:
-        #    image_center = center
         image_center = np.array(image_shape) / 2
-        contour_ori_center = ori_center if ori_center is not None else contours[0].mean(axis=0)
-        # print(image_shape, image_center, contour_ori_center)
+        contour_ori_center = contours[0].mean(axis=0) if contour_ori_center is None else contour_ori_center
     else:
         image_center = np.array([0, 0])
         contour_ori_center = np.array([0, 0])
-        # print(image_shape, image_center, contour_ori_center)
     
     mask = np.zeros((image_shape[0], image_shape[1], n_contours), dtype=np.uint8)
     for frame_idx, contour in enumerate(contours):
         mask[:, :, frame_idx] = generate_binary_mask_from_contour(contour-contour_ori_center+image_center, image_shape, implementation)
     return mask
+
+# def generate_binary_masks_from_contour_seq(contours, image_shape, implementation='skimg', centering=True, ori_center=None):
+#     """
+#     Generates a binary mask from a sequence of 2D contours.
+    
+#     Parameters:
+#     contours (ndarray): 1d array of 2D numpy arrays with shape (n_frames) representing the contour coordinates of each frame.
+#         Each element is a numpy array of shape (n_points, 2) representing a contour.
+#     image_shape (tuple): 2-tuple representing the shape of the image.
+    
+#     Returns:
+#     numpy.ndarray: Binary mask with shape (image_shape).
+#     """
+#     # mask = np.zeros(image_shape, dtype=np.uint8)
+#     n_contours = len(contours)
+    
+
+#     # if centering and center is not None:
+#     #     image_center = np.array(image_shape) / 2
+#     if centering:
+#         #if center is None:
+#         #    image_center = np.array(image_shape) / 2
+#         #else:
+#         #    image_center = center
+#         image_center = np.array(image_shape) / 2
+#         contour_ori_center = ori_center if ori_center is not None else contours[0].mean(axis=0)
+#         # print(image_shape, image_center, contour_ori_center)
+#     else:
+#         image_center = np.array([0, 0])
+#         contour_ori_center = np.array([0, 0])
+#         # print(image_shape, image_center, contour_ori_center)
+    
+#     mask = np.zeros((image_shape[0], image_shape[1], n_contours), dtype=np.uint8)
+#     for frame_idx, contour in enumerate(contours):
+#         mask[:, :, frame_idx] = generate_binary_mask_from_contour(contour-contour_ori_center+image_center, image_shape, implementation)
+#     return mask
 
 def generate_binary_mask_from_two_contours_seq(contours, image_shape, implementation='skimg', centering=True):
     """
