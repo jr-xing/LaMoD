@@ -9,7 +9,7 @@ class LaMoD(nn.Module):
         super().__init__()
         self.models = nn.ModuleDict()
         for model_name, model_config in network_config.items():
-            self.models[model_name] = build_model(model_config, skip_load_pretrained=skip_load_pretrained)
+            self.models[model_name] = build_model(model_config, skip_load_pretrained=skip_load_pretrained, device=device)
             # self.networks[model_name] = self.networks[model_name]#.to(device)
         self.device = device
     # def to_device(self, device):
@@ -19,13 +19,13 @@ class LaMoD(nn.Module):
     def load_checkpoint(self, registration_checkpoint_fname=None, diffusion_checkpoint_fname=None, motion_regression_checkpoint_fname=None):
         if registration_checkpoint_fname is not None:
             self.networks['registration'].load_state_dict(
-                registration_checkpoint_fname, strict=False)
+                registration_checkpoint_fname, strict=False, map_location=self.device)
         if registration_checkpoint_fname is not None:
             self.networks['diffusion'].load_state_dict(
-                registration_checkpoint_fname, strict=False)
+                registration_checkpoint_fname, strict=False, map_location=self.device)
         if registration_checkpoint_fname is not None:
             self.networks['motion_regression'].load_state_dict(
-                registration_checkpoint_fname, strict=False)
+                registration_checkpoint_fname, strict=False, map_location=self.device)
 
     def inference(self, video, disp_mask=None, ori_n_frames=None, train_config={}, DENSE_disp=None, skip_diffusion = False):
         # Prepare data
@@ -51,7 +51,7 @@ class LaMoD(nn.Module):
 
         reg_forward_data = train_config.get('reg_forward_data', 'latent')
         with torch.no_grad():
-            reg_pred_dict = reg_model(src, tar)
+            reg_pred_dict = reg_model.encode(src, tar)
 
             if reg_forward_data in ['displacement_field', 'disp']:
                 reg_pred = reg_pred_dict['displacement'] # should have shape [N, 2, T, H, W] = [N, 2, T, 128, 128] 
