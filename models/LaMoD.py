@@ -27,7 +27,7 @@ class LaMoD(nn.Module):
             self.networks['motion_regression'].load_state_dict(
                 registration_checkpoint_fname, strict=False)
 
-    def inference(self, video, disp_mask=None, ori_n_frames=None, train_config={}, DENSE_disp=None, skip_diffusion = True):
+    def inference(self, video, disp_mask=None, ori_n_frames=None, train_config={}, DENSE_disp=None, skip_diffusion = False):
         # Prepare data
         # the input video variable should be a pytorch tensor with shape [1, T, H, W] or [N, 1, T, H, W]
         if video.ndim == 4:
