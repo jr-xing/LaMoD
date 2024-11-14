@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from models import build_model
 from modules.trainer.normalize import *
+from modules.trainer import patchify, merge_patches
 class LaMoD(nn.Module):
     def __init__(self, network_config, device='cpu', skip_load_pretrained=False):
         super().__init__()
@@ -64,43 +65,57 @@ class LaMoD(nn.Module):
         # --------------------------------------------------#        
         if not skip_diffusion:
             diffusion_normalize_method = train_config.get('diffusion_normalize_method', 'standardize')
-            if diffusion_normalize_method == '1_std':
-                z_norm, z_mean, z_std, z_min, z_max = latent_1_std(reg_pred)
-            elif diffusion_normalize_method == 'std_scaler':
-                z_norm, z_std = latent_std_scaler(reg_pred)
-            elif diffusion_normalize_method == 'none':
-                z_norm = reg_pred
-            elif diffusion_normalize_method == 'log_scaler':
-                z_norm, z_std = latent_log_scaler(reg_pred)
-            elif diffusion_normalize_method == 'plus_mins_1':
-                z_norm, z_min, z_max = latent_plus_mins_1_scaler(reg_pred)
-            elif diffusion_normalize_method == 'standardize':
-                z_norm, z_mean, z_std = latent_standardize(reg_pred)
+            diffusion_patchify = train_config.get('diffusion_patchify', True)
+            diffusion_patchify_length = train_config.get('diffusion_patchify_length', 16)
+            diffusion_patchify_overlap_length = train_config.get('diffusion_patchify_overlap_length', None)
+            if diffusion_patchify:
+                reg_pred_patches, reg_pred_patch_indices = patchify(reg_pred, diffusion_patchify_length, 2, diffusion_patchify_overlap_length)
             else:
-                raise ValueError(f'Invalid diffusion_normalize_method: {diffusion_normalize_method}')
+                reg_pred_patches = [reg_pred]
+            z_denoised_patches = []
+            for curr_reg_pred_patch in reg_pred_patches:
+                if diffusion_normalize_method == '1_std':
+                    z_norm, z_mean, z_std, z_min, z_max = latent_1_std(curr_reg_pred_patch)
+                elif diffusion_normalize_method == 'std_scaler':
+                    z_norm, z_std = latent_std_scaler(curr_reg_pred_patch)
+                elif diffusion_normalize_method == 'none':
+                    z_norm = curr_reg_pred_patch
+                elif diffusion_normalize_method == 'log_scaler':
+                    z_norm, z_std = latent_log_scaler(curr_reg_pred_patch)
+                elif diffusion_normalize_method == 'plus_mins_1':
+                    z_norm, z_min, z_max = latent_plus_mins_1_scaler(curr_reg_pred_patch)
+                elif diffusion_normalize_method == 'standardize':
+                    z_norm, z_mean, z_std = latent_standardize(curr_reg_pred_patch)
+                else:
+                    raise ValueError(f'Invalid diffusion_normalize_method: {diffusion_normalize_method}')
 
-            noise_loss, z_start, noise, zt, pred_noise = diffusion_model(
-                z_norm, noise_smoothing=True, compute_loss=False)
+                noise_loss, z_start, noise, zt, pred_noise = diffusion_model(
+                    z_norm, noise_smoothing=True, compute_loss=False)
 
-            z_denoised_norm, predicted_noise_list = diffusion_model.p_sample_loop(
-                shape=zt.shape,
-                cond=None,
-                cond_scale=1.,
-                img=zt,
-                noise=pred_noise,
-                noise_smoothing=True)
-            if diffusion_normalize_method == 'plus_mins_1':
-                z_denoised = latent_plus_mins_1_reverse(z_denoised_norm, z_min, z_max)
-            elif diffusion_normalize_method == '1_std':
-                z_denoised = latent_1_std_reverse(z_denoised_norm, z_mean, z_std, z_min, z_max)
-            elif diffusion_normalize_method == 'std_scaler':
-                z_denoised = latent_std_reverse(z_denoised_norm, z_std)
-            elif diffusion_normalize_method == 'log_scaler':
-                z_denoised = latent_log_reverse(z_denoised_norm, z_std)
-            elif diffusion_normalize_method == 'standardize':    
-                z_denoised = latent_unstandardize(z_denoised_norm, z_mean, z_std)
+                z_denoised_norm, predicted_noise_list = diffusion_model.p_sample_loop(
+                    shape=zt.shape,
+                    cond=None,
+                    cond_scale=1.,
+                    img=zt,
+                    noise=pred_noise,
+                    noise_smoothing=True)
+                if diffusion_normalize_method == 'plus_mins_1':
+                    z_denoised_patch = latent_plus_mins_1_reverse(z_denoised_norm, z_min, z_max)
+                elif diffusion_normalize_method == '1_std':
+                    z_denoised_patch = latent_1_std_reverse(z_denoised_norm, z_mean, z_std, z_min, z_max)
+                elif diffusion_normalize_method == 'std_scaler':
+                    z_denoised_patch = latent_std_reverse(z_denoised_norm, z_std)
+                elif diffusion_normalize_method == 'log_scaler':
+                    z_denoised_patch = latent_log_reverse(z_denoised_norm, z_std)
+                elif diffusion_normalize_method == 'standardize':    
+                    z_denoised_patch = latent_unstandardize(z_denoised_norm, z_mean, z_std)
+                else:
+                    raise ValueError(f'Invalid diffusion_normalize_method: {diffusion_normalize_method}')
+                z_denoised_patches.append(z_denoised_patch)
+            if diffusion_patchify:
+                z_denoised = merge_patches(z_denoised_patches, reg_pred_patch_indices)
             else:
-                raise ValueError(f'Invalid diffusion_normalize_method: {diffusion_normalize_method}')
+                z_denoised = z_denoised_patch
         else:
             z_denoised = reg_pred
             pred_noise = None,
