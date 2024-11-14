@@ -1,8 +1,9 @@
-debug/
-# checkpoints/
 *.pth
 **/__pycache__/
 test_results/
+debug/
+debug/
+debug/notebooks
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
