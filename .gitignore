@@ -1,5 +1,6 @@
 # debug/
 # checkpoints/
+*.pyc
 *.pth
 **/__pycache__/
 test_results/
