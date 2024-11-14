@@ -11,29 +11,29 @@ from models.reconstruction.TransUNet3D.nn_transunet.networks.nnunet_model import
 from models.reconstruction.StrainNet.model import Unet as StrainNet
 
 
-def load_pretrained_model(model, pretrained_model_path, strict=True):
+def load_pretrained_model(model, pretrained_model_path, strict=True, device='cpu'):
     print(f'Loading pretrained model from {pretrained_model_path}')
-    pretrained_model_state_dict = torch.load(pretrained_model_path)
+    pretrained_model_state_dict = torch.load(pretrained_model_path, map_location=device)
     model.load_state_dict(
         pretrained_model_state_dict, strict=strict)
     return model
 
-def build_model(model_config, all_config=None, skip_load_pretrained=False):
+def build_model(model_config, all_config=None, skip_load_pretrained=False, device='cpu'):
     if model_config['type'] == 'RegNet':
         # from models.registration.regnet import RegNet
         model = RegNet(model_config)
         if model_config.get('load_pretrained', False) and not skip_load_pretrained:
-            model = load_pretrained_model(model, model_config['pretrained_model_path'])
+            model = load_pretrained_model(model, model_config['pretrained_model_path'], device=device)
         return model
     elif model_config['type'] == 'VideoDiffusion':
         unet_config = model_config['UNet']
         diffusion_config = model_config['Diffusion']
         unet = VideoUNet3D(**unet_config)
         if unet_config.get('load_pretrained', False):
-            unet = load_pretrained_model(unet, unet_config['pretrained_model_path'])
+            unet = load_pretrained_model(unet, unet_config['pretrained_model_path'], device=device)
         diffusion = VideoDiffusion(unet, **diffusion_config)
         if diffusion_config.get('load_pretrained', False) and not skip_load_pretrained:
-            diffusion = load_pretrained_model(diffusion, diffusion_config['pretrained_model_path'], strict=False)
+            diffusion = load_pretrained_model(diffusion, diffusion_config['pretrained_model_path'], strict=False, device=device)
 
         if model_config['Diffusion'].get('beta_schedule_overwrite', False):
             
@@ -66,7 +66,7 @@ def build_model(model_config, all_config=None, skip_load_pretrained=False):
     elif model_config['type'] == 'DiffusionDecoder':
         model = DiffusionDecoder(**model_config)
         if model_config.get('load_pretrained', False) and not skip_load_pretrained:
-            model = load_pretrained_model(model, model_config['pretrained_model_path'])
+            model = load_pretrained_model(model, model_config['pretrained_model_path'], device=device)
         return model
     elif model_config['type'] == 'UNetR':
         model = UNetR(**model_config)

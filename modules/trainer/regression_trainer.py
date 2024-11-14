@@ -1,4 +1,3 @@
-import wandb
 import torch
 import numpy as np
 import datetime, json, copy
@@ -15,9 +14,14 @@ from scipy import ndimage
 from models.diffusion.ddpm import q_sample, p_sample, p_sample_loop
 from modules.data.processing.rotation import rot_img_seq, rotate_displacement_field_seq
 # lm.FluidMetric(self.fluid_params)
-import lagomorph as lm
+# import lagomorph as lm
 # from train_denoisier_video_diffusion import latent_1_std, latent_std_scaler, latent_log_scaler, latent_plus_mins_1_scaler, latent_standardize, latent_1_std_reverse, latent_std_reverse, latent_log_reverse, latent_plus_mins_1_reverse, latent_unstandardize
 from modules.trainer.normalize import latent_1_std, latent_std_scaler, latent_log_scaler, latent_plus_mins_1_scaler, latent_standardize, latent_1_std_reverse, latent_std_reverse, latent_log_reverse, latent_plus_mins_1_reverse, latent_unstandardize
+
+try:
+    import wandb
+except:
+    Warning('Wandb not installed. This may cause problem in the training process if wandb is set to be enabled in the configuration')
 
 class DummyLrScheduler:
     """

@@ -21,6 +21,7 @@
             "max_pool": [[1,2,2],[1,2,2],[1,2,2],[1,2,2]],
             "nb_features": "[[8, 16, 16], [16, 16, 16, 8, 8]]",
             "load_pretrained": true,
+            "encoder_only": true,
             "pretrained_model_path": "checkpoints/ours_registration.pth"
         },
         "latent":{

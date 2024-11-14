@@ -1,7 +1,7 @@
 import os
 # from EpdiffLib import Epdiff
-from models.registration.EpdiffLib import Epdiff
-import lagomorph as lm
+
+
 import torch
 import numpy as np
 import torch.nn as nn
@@ -9,6 +9,12 @@ import torch.nn.functional as F
 from models.registration.svf import Svf, SpatialTransformer#, Grad
 
 from timeit import default_timer
+
+try:
+    import lagomorph as lm
+    from models.registration.EpdiffLib import Epdiff
+except:
+    Warning("lagomorph is not installed. This may cause errors when using the Epdiff approach.")
 
 ################################################################
 # fourier layer
@@ -239,14 +245,18 @@ class RegNet(nn.Module):
         self.gamma = self.model_config.get('gamma', 1.0)
         self.sigma = self.model_config.get('sigma', 0.03)
         self.infeats = self.model_config.get('infeats', 2)
+        # Allow user to use only the encoder of this network as a feature extractor
+        # In this case, the decoder and the flow are not used
+        self.encoder_only = self.model_config.get('encoder_only', False) 
         
         self.disp_generator = self.model_config.get('disp_generator', 'Epdiff')
         self.twoD_plus_T = self.model_config.get('twoD_plus_T', False)        
-        if self.disp_generator.lower() == 'epdiff':
-            self.MEpdiff = Epdiff(alpha=self.alpha, gamma=self.gamma)
-            self.fluid_params = [self.alpha, 0, self.gamma]
-            self.metric = lm.FluidMetric(self.fluid_params)
-            self.unet_output = self.model_config.get('unet_output', 'momentum')
+        if self.disp_generator.lower() == 'epdiff':            
+            if not self.encoder_only:
+                self.MEpdiff = Epdiff(alpha=self.alpha, gamma=self.gamma)
+                self.fluid_params = [self.alpha, 0, self.gamma]
+                self.metric = lm.FluidMetric(self.fluid_params)
+                self.unet_output = self.model_config.get('unet_output', 'momentum')
         elif self.disp_generator.lower() == 'svf':
 
             self.svf = Svf(
@@ -482,7 +492,6 @@ class RegNet(nn.Module):
                 'latent': encoder_output
             }
     
-    
     def forward_3D_input_3D_network(self, src: torch.Tensor, tar: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError(f'Not implemented yet for 3D input and 3D network')
 
@@ -543,7 +552,8 @@ class RegNet(nn.Module):
             encoder_output, encoder_latent_features = self.register_unet.encode(input)
             return {
                 'latent': encoder_output,
-                'latent_history': encoder_latent_features
+                'latent_history': encoder_latent_features,
+                'displacement': None
             }
         elif len(self.imagesize) == 2 and self.twoD_plus_T:
             # both src and tar are 2D+T image sequences, but the network is 2D
@@ -555,7 +565,8 @@ class RegNet(nn.Module):
             encoder_output = encoder_output.view(batch_size, T, H, W)
             return  {
                 'latent': encoder_output,
-                'latent_history': encoder_latent_features
+                'latent_history': encoder_latent_features,
+                'displacement': None
             }
         elif len(self.imagesize) == 3 and self.twoD_plus_T:
             # both src and tar are 2D+T image sequences, and the network is 3D
@@ -563,7 +574,8 @@ class RegNet(nn.Module):
             encoder_output, encoder_latent_features = self.register_unet.encode(input)
             return {
                 'latent': encoder_output,
-                'latent_history': encoder_latent_features
+                'latent_history': encoder_latent_features,
+                'displacement': None
             }
         elif len(self.imagesize) == 3 and not self.twoD_plus_T:
             # both src and tar are 3D volumes, and the network is 3D

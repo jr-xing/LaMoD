@@ -1,4 +1,4 @@
-import wandb
+
 import torch
 import numpy as np
 import datetime, json, copy
@@ -9,6 +9,11 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data import SubsetRandomSampler
 from modules.loss import LossCalculator
+
+try:
+    import wandb
+except:
+    Warning('Wandb not installed. This may cause problem in the training process if wandb is set to be enabled in the configuration')
 
 # Custom function to get a subset sampler
 def get_subset_random_sampler(size, subset_size):
