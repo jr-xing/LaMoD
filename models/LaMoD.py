@@ -27,6 +27,21 @@ class LaMoD(nn.Module):
             self.networks['motion_regression'].load_state_dict(
                 registration_checkpoint_fname, strict=False, map_location=self.device)
 
+    # def inference(self, video, disp_mask=None, ori_n_frames=None, train_config={}, DENSE_disp=None, skip_diffusion = False, repeats = 1):
+    #     if repeats == 1:
+    #         return self.inference_once(video, disp_mask, ori_n_frames, train_config, DENSE_disp, skip_diffusion)
+    #     else:            
+    #         repeat_pred_dicts = []
+    #         repeat_target_dicts = []
+    #         for repeat_idx in range(repeats):
+    #             curr_pred_dict, curr_target_dict = self.inference_once(video, disp_mask, ori_n_frames, train_config, DENSE_disp, skip_diffusion)
+    #             repeat_pred_dicts.append(repeat_pred_dicts)
+    #             repeat_target_dicts.append(curr_target_dict)
+
+    #         # note: only the different LaMoD need to be stored
+
+
+
     def inference(self, video, disp_mask=None, ori_n_frames=None, train_config={}, DENSE_disp=None, skip_diffusion = False):
         # Prepare data
         # the input video variable should be a pytorch tensor with shape [1, T, H, W] or [N, 1, T, H, W]
