@@ -4,6 +4,7 @@
 *.pth
 **/__pycache__/
 test_results/
+debug/**/*.npy
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
