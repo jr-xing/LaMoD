@@ -48,8 +48,8 @@ class LaMoD(nn.Module):
         if video.ndim == 4:
             video = video[None]
         N, C, Nfr, H, W = video.shape
-        if ori_n_frames is None:
-            ori_n_frames = [Nfr]
+        if (ori_n_frames is None) or (type(ori_n_frames) is list and ori_n_frames[0] is None):
+            ori_n_frames = [Nfr]*N
         src = video[:, :, 0:1].repeat(1, 1, Nfr-1, 1, 1)     # [N, 1, Nfr-1, H, W]
         tar = video[:, :, 1:]                                # [N, 1, Nfr-1, H, W]
 

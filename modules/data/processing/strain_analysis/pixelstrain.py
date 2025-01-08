@@ -11,6 +11,7 @@ def pixelstrain(**kwargs):
         'X': kwargs.get('X', None),
         'Y': kwargs.get('Y', None),
         'mask': kwargs.get('mask', None),
+        'post_processing_mask': kwargs.get('post_processing_mask', None),
         'times': kwargs.get('times', None),
         'method': kwargs.get('method', 'RSTLS'),
         'dXt': kwargs.get('dXt', None),
@@ -23,6 +24,7 @@ def pixelstrain(**kwargs):
     X = api['X']
     Y = api['Y']
     mask = api['mask']
+    post_processing_mask = api['post_processing_mask']
 
     # Check times
     time = api['times']
@@ -163,7 +165,10 @@ def pixelstrain(**kwargs):
                         strain['p1'][i,j,fr] = d.flatten()[-1]
                         strain['p2'][i,j,fr] = d.flatten()[0]
                         strain['p1or'][i,j,fr] = np.arctan2(v[1,1], v[0,1])
-
+        # apply post-processing mask
+        if post_processing_mask is not None:
+            for key in ['XX', 'XY', 'YX', 'YY', 'RR', 'RC', 'CR', 'CC', 'p1', 'p2', 'p1or']:
+                strain[key][post_processing_mask<0.5,fr] = np.nan
     return strain
 
 from typing import Union
