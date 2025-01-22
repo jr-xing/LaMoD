@@ -127,3 +127,46 @@ def mat2dict(matobj, as_dict=True, ndarray_to_list=False):
         return _check_keys(matobj, ndarray_to_list)
     # else:
     #     return data
+
+
+# from modules.data.datareader.DENSE_cine_IO import DENSECINEDataReader
+from modules.data.datareader.DENSE_cine_IO import DENSECINEDataReader
+from modules.data.processing.displacement_utils import extract_radial_tangent_components
+def load_data(data_config, full_config=None):
+    all_data = []
+    for data_reader_name, data_reader_info in data_config.items():
+        data_loader_name = data_reader_info['loading']['loader'] # e.g. DENSE_cine_IO
+        if data_loader_name == 'DENSE_cine_IO':
+            data_source = DENSECINEDataReader()
+        # elif data_loader_name == 'DENSE_IO':
+        #     data_source = DENSEDataReader()
+        else:
+            raise ValueError(f'Unknown data loader: {data_loader_name}')
+        
+        all_data_from_source, _ = data_source.load_record(data_reader_info, data_reader_name=data_reader_name)
+        # data_source_info['data_source'] = data_source
+        all_data += all_data_from_source
+    return all_data
+
+def load_data_with_raw(data_config, full_config=None, all_raw_data=None):
+    all_data = []
+    if all_raw_data is None:
+        no_raw_data_provided = True
+        all_raw_data = []
+    else:
+        no_raw_data_provided = False
+    for data_reader_name, data_reader_info in data_config.items():
+        data_loader_name = data_reader_info['loading']['loader'] # e.g. DENSE_cine_IO
+        if data_loader_name == 'DENSE_cine_IO':
+            data_source = DENSECINEDataReader()
+        # elif data_loader_name == 'DENSE_IO':
+        #     data_source = DENSEDataReader()
+        else:
+            raise ValueError(f'Unknown data loader: {data_loader_name}')
+        
+        all_data_from_source, all_raw_data_from_source = data_source.load_record(data_reader_info, data_reader_name=data_reader_name, raw_data=all_raw_data)
+        # data_source_info['data_source'] = data_source
+        all_data += all_data_from_source
+        if no_raw_data_provided:
+            all_raw_data += all_raw_data_from_source
+    return all_data, all_raw_data

@@ -1,0 +1,199 @@
+{
+    "data": {
+        "DENSE": {
+            "info": {},
+            "loading": {
+                "loader": "DENSE_cine_IO",
+                "format": "npy",
+                "npy_filenames": "/scratch/jx8fh/2024-03-24-DENSE-from-Yu-SUBSET-VOL-*-OF-8.npy",
+                "method": "general_slices",
+                "resize": false,
+                "n_read": -1,
+                "augment_translate_times_y": 0,
+                "augment_translate_times_x": 0,
+                "augment_rotate_times": 0,
+                "data_to_feed": [
+                    {
+                        "key": "DENSE_myo_masks_rescaled",
+                        "generate_from_disp": false,
+                        "output_key": "myo_masks"
+                    }
+                ]
+            }
+        },
+        "Cine": {
+            "info": {},
+            "loading": {
+                "loader": "DENSE_cine_IO",
+                "format": "npy",
+                "npy_filenames": [
+                    "/scratch/jx8fh/2024-04-20-Cine-from-Yu-mat-all.npy"],
+                "method": "general_slices",
+                "resize": false,
+                "n_read": -1,
+                "augment_translate_times_y": 0,
+                "augment_translate_times_x": 0,
+                "augment_rotate_times": 0,
+                "data_to_feed": [
+                    {
+                        "key": "cine_cropped_myocardium_masks_rescaled_1mm2",
+                        "generate_from_disp": false,
+                        "output_key": "myo_masks"
+                    }
+                ]
+            }
+        }
+    },
+    "data_split": {
+        "method": "by_pattern",
+        "shuffle": false,
+        "label_role": "label",
+        "splits": {
+            "train": {
+                "role": "train",
+                "patterns": [
+                    ".*"
+                ],
+                "exclude_patterns": ["21","22","23","24","25","26","Br_Data14_ScanA_UVA","Br_Data15_ScanA_UVA","Br_Data6_ScanA_UVA","CT41_03-24-2016","CT42_09-18-2015","CT45_03-24-2016","CT46_10-06-2015","CT47","CT50_10-21-2015","CT51_04-14-2016","CT52","Emory_06","Emory_07","Lyon69_lav_lu","Lyon69_mar_lu","Lyon69_mar_mo","OB021","OB022","OB024","OB025","OB026","OB027","OB028","OB029","OB030","P104","P107","P110_patient","StFrancis_DENSE14A","StFrancis_DENSE15A","StFrancis_DENSE16A","UVA_07","UVA_08_A_U1","UVA_09_A_U1","16","17","18","19","2","Br_Data10_ScanA_UVA","Br_Data11_ScanA_UVA_patient","Br_Data12_ScanA_UVA","Br_Data13_ScanA_UVA","CRT107","CRT110","CT23_06-17-2015","CT31_07-27-2015","CT32","CT33","CT35","CT40","Emory_01","Emory_03","Emory_04","P112","P117","P133","Lyon69_ene_al","Lyon69_gue_ro","Lyon69_har_na","OB015","OB016","OB017","OB018","OB019","OB020","StFrancis_DENSE10A","StFrancis_DENSE11A","StFrancis_DENSE12A","StFrancis_DENSE13A_DCM","UVA_02","UVA_04","UVA_05","UVA_05192021", "SET02", "SET03"],
+                "repeat_times": 0,
+                "keep_augmented": true
+            },
+            "val": {
+                "role": "val",
+                "patterns": ["21","22","23","24","25","26","Br_Data14_ScanA_UVA","Br_Data15_ScanA_UVA","Br_Data6_ScanA_UVA","CT41_03-24-2016","CT42_09-18-2015","CT45_03-24-2016","CT46_10-06-2015","CT47","CT50_10-21-2015","CT51_04-14-2016","CT52","Emory_06","Emory_07","Lyon69_lav_lu","Lyon69_mar_lu","Lyon69_mar_mo","OB021","OB022","OB024","OB025","OB026","OB027","OB028","OB029","OB030","P104","P107","P110_patient","StFrancis_DENSE14A","StFrancis_DENSE15A","StFrancis_DENSE16A","UVA_07","UVA_08_A_U1","UVA_09_A_U1"],
+                "exclude_patterns": ["SET01", "SET03", "SETOLD01", "SETOLD02"],
+                "keep_augmented": true
+            },
+            "test": {
+                "role": "test",
+                "patterns": ["16","17","18","19","2","Br_Data10_ScanA_UVA","Br_Data11_ScanA_UVA_patient","Br_Data12_ScanA_UVA","Br_Data13_ScanA_UVA","CRT107","CRT110","CT23_06-17-2015","CT31_07-27-2015","CT32","CT33","CT35","CT40","Emory_01","Emory_03","Emory_04","P112","P117","P133","Lyon69_ene_al","Lyon69_gue_ro","Lyon69_har_na","OB015","OB016","OB017","OB018","OB019","OB020","StFrancis_DENSE10A","StFrancis_DENSE11A","StFrancis_DENSE12A","StFrancis_DENSE13A_DCM","UVA_02","UVA_04","UVA_05","UVA_05192021"],
+                "exclude_patterns": ["SET01", "SET02", "SETOLD01", "SETOLD02"],
+                "keep_augmented": true
+            }
+        }
+    },
+    "datasets": {
+        "train": {
+            "type": "RegVolPairDataset",
+            "data_split": [
+                "train"
+            ],
+            "myo_mask_key": "myo_masks",
+            "return_DENSE_disp": false,
+            "frame_aligning_method": "patchify",
+            "patch_generation_strategy": "minimal_overlap",
+            "frame_patchify_n_frames": 16,
+            "disp_type": "Lagrangian"
+        },
+        "val": {
+            "type": "RegVolPairDataset",
+            "data_split": [
+                "val"
+            ],
+            "myo_mask_key": "myo_masks",
+            "return_DENSE_disp": false,
+            "frame_aligning_method": "patchify",
+            "patch_generation_strategy": "minimal_overlap",
+            "frame_patchify_n_frames": 16,
+            "disp_type": "Lagrangian"
+        },
+        "test": {
+            "type": "RegVolPairDataset",
+            "data_split": [
+                "test"
+            ],
+            "myo_mask_key": "myo_masks",
+            "return_DENSE_disp": false,
+            "frame_aligning_method": "patchify",
+            "patch_generation_strategy": "minimal_overlap",
+            "frame_patchify_n_frames": 16,
+            "disp_type": "Lagrangian"
+        }
+    },    
+    "networks": {
+        "registration":{
+            "type": "RegNet",
+            "skip_connect": false,
+            "imagesize": [16, 128, 128],
+            "twoD_plus_T": true,
+            "twoDT_to_2D_method": "slicing",
+            "disp_generator": "Epdiff",
+            "unet_output": "velocity",
+            "max_pool": [[1,2,2],[1,2,2],[1,2,2],[1,2,2]],
+            "nb_features": "[[8, 16, 16], [16, 16, 16, 8, 8]]",
+            "load_pretrained": true,
+            "pretrained_model_path": "checkpoints/ours_registration.pth"
+        }        
+    },
+    "training":{
+        "seed": 2434,
+        "scheme": "registration",
+        "batch_forward_method": "reg_disp_pred",
+        "reg_forward_data": "latent",
+        "regression_output_type": "disp",
+        "mask_padded_frames": true,
+        "resize_before_regression": false,
+        "batch_size": 3,
+        "epochs": 500,
+        "enable_random_rotate": false,
+        "random_rotate_prob_thres": 0.3,
+        "epochs_without_improvement_tolerance": 30,
+        "disp_masking": true,
+        "disp_mask_key": "src_tar_disp_union_mask",
+        "save_best_model_interval": -1,
+        "training_latent_model_epoch_interval": 30,
+        "training_motion_decoder_epoch_interval": 30,
+        "optimization": {
+            "registration": {
+                "type": "Adam",
+                "target": "registration",
+                "weight_decay": 1e-5,
+                "learning_rate": 1e-4,
+                "lr_scheduler": {
+                    "enable": true,
+                    "type": "StepLR",
+                    "step_size": 15,
+                    "gamma": 0.9
+                }
+            }
+        }
+    },
+    "losses": {
+        "registration_reconstruction": {
+            "type": "regression",
+            "prediction": "various",
+            "target": "registration_target",
+            "weight": 1,
+            "criterion": "registration_reconstruction",
+            "enable": true,
+            "regularization_weight": 1,
+            "sigma": 0.03,
+            "gamma": 1.0
+        }
+    },
+    "evaluation": {
+        "reconstruction_error": {
+            "enable": true,
+            "weight": 1,
+            "prediction": "deformed_source",
+            "target": "registration_target",
+            "criterion": "MSE"
+        }
+    },
+    "saving": {
+        "data_keys_to_pop": ["velocity_pred", "deformed_source_pred"],
+        "save_final_model": true,
+        "save_best_only": true,
+        "save_model_num": 3,
+        "save_prediction_method": "single_file",
+        "performance_log_dir": "/p/mmcardiac/Resaerch_projects/cardiac/cardiac-segmentation/cardiac-segmentation-2/codeV6/exp_results/wandb_sweep_logs",
+        "save_checkpoint": true,
+        "save_prediction": false,
+        "save_KeyboardInterrupt": true
+    },
+    "others": {
+        "use_wandb": true,
+        "wandb_sweep_file": "./configs/test_wandb_sweep.yaml",
+        "wandb_visualize_interval": 0.1
+    }
+}
