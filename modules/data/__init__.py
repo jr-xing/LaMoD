@@ -170,3 +170,30 @@ def load_data_with_raw(data_config, full_config=None, all_raw_data=None):
         if no_raw_data_provided:
             all_raw_data += all_raw_data_from_source
     return all_data, all_raw_data
+
+import re
+from pathlib import Path
+def glob_star(filename_pattern):
+    """
+    Returns a list of filenames that match the given pattern.
+    Only wildcard character '*' is supported in the pattern.
+
+    Parameters:
+    filename_pattern (str): The pattern to match filenames against. The pattern can contain a wildcard character '*'.
+
+    Returns:
+    list: A sorted list of filenames that match the pattern.
+
+    Examples:
+    >>> glob_star('/p/a*.txt')
+    ['/p/a1.txt', '/p/a2.txt']
+    """
+    # convert the filename_pattern to a regex
+    regex = re.compile(filename_pattern.replace('*', '.*'))
+    # get the directory of the filename_pattern
+    filename_dir = Path(filename_pattern).parent
+    # get all the files under the directory
+    filenames = [str(filename) for filename in list(filename_dir.glob('*'))]
+    # filter the filenames using the regex
+    filenames_matched = sorted([filename for filename in filenames if regex.match(filename)])
+    return filenames_matched

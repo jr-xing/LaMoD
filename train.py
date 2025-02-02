@@ -16,28 +16,19 @@ config = update_config_by_undefined_args(config, undefined_args)
 
 import json
 print(json.dumps(config, indent=4))
-# quit()
 
-# 2. load all data
-from modules.data import load_data
-all_data = load_data(config['data'])
-
-# append new data
-from modules.data.processing.create_additional_data import create_addition_data
-all_data = create_addition_data(all_data, config.get('additional_data', {}))
-
-# 3. data splitting
+# 2. load all data splits
 train_split = {
     'info': {},
-    'data': [d for d in all_data if d['subject_id'].replace('-DENSE', '').replace('-Cine', '') not in config['data_split']['splits']['train']['exclude_patterns']]
+    'data': np.load(config['data']['train'], allow_pickle=True).tolist()
 }
 val_split = {
     'info': {},
-    'data': [d for d in all_data if d['subject_id'].replace('-DENSE', '').replace('-Cine', '') in config['data_split']['splits']['val']['patterns']]
+    'data': np.load(config['data']['val'], allow_pickle=True).tolist()
 }
 test_split = {
     'info': {},
-    'data': [d for d in all_data if d['subject_id'].replace('-DENSE', '').replace('-Cine', '') in config['data_split']['splits']['test']['patterns']]
+    'data': np.load(config['data']['test'], allow_pickle=True).tolist()
 }
 
 data_splits = {

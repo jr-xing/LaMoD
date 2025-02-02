@@ -96,7 +96,7 @@ class RegVolPairDataset(TorchDataset):
     def align_volume_frames(self, target_key=None):
         if target_key is None:
             target_key = self.img_key
-        n_target_frames = self.frame_aligning_n_frames
+        n_target_frames = self.frame_aligning_n_frames + 1
         frame_idx = -1
         padding_method = 'constant'
         # print(self.data[0].keys())
@@ -155,6 +155,7 @@ class RegVolPairDataset(TorchDataset):
 
         if self.return_DENSE_disp:
             datum['DENSE_disp'] = self.data[tar_datum_idx][self.DENSE_disp_key][..., tar_starting_frame_idx:tar_starting_frame_idx+self.frame_patchify_n_frames]
+            # datum['DENSE_disp'] = self.data[src_datum_idx]
 
         src = np.moveaxis(src, self.img_frame_dim, 0)[None, ...]
         tar = np.moveaxis(tar, self.img_frame_dim, 0)[None, ...]
@@ -207,16 +208,9 @@ class RegVolPairDataset(TorchDataset):
         if self.disp_type == 'Eulerian':
             src = raw_src[..., :T-1]
             tar = raw_src[..., 1:]
-            src_disp_mask = raw_datum[self.disp_mask_key][..., :T-1]
-            tar_disp_mask = raw_datum[self.disp_mask_key][..., 1:]
-            src_tar_disp_union_mask = np.logical_or(src_disp_mask, tar_disp_mask)
         elif self.disp_type == 'Lagrangian':
             src = np.repeat(raw_src[..., 0:1], T-1, axis=-1)
             tar = raw_src[..., 1:]
-            src_disp_mask = np.repeat(raw_datum[self.disp_mask_key][..., 0:1], T-1, axis=-1)
-            tar_disp_mask = raw_datum[self.disp_mask_key][..., 1:]
-            src_tar_disp_union_mask = np.logical_or(src_disp_mask, tar_disp_mask)
-            # raise NotImplementedError(f'disp_type={self.disp_type} not implemented')
         else:
             raise ValueError(f'disp_type={self.disp_type} not recognized')
         
@@ -230,9 +224,8 @@ class RegVolPairDataset(TorchDataset):
             # reshape from (H, W, T) to (1, T, H, W)
             src = np.moveaxis(src, -1, 0)[None, ...]
             tar = np.moveaxis(tar, -1, 0)[None, ...]
-            src_tar_disp_union_mask = np.moveaxis(src_tar_disp_union_mask, -1, 0)[None, ...]
             if self.return_DENSE_disp:
-                datum['DENSE_disp'] = np.moveaxis(datum['DENSE_disp'], -1, 0)[None, ...]
+                datum['DENSE_disp'] = np.moveaxis(datum['DENSE_disp'], -1, 1)#[None, ...]
         elif self.frame_aligning_method == 'patchify':
             # randomly generate the starting frame index
             if patch_start_idx is not None:
@@ -256,7 +249,6 @@ class RegVolPairDataset(TorchDataset):
             # print(f'Using frame {starting_frame_idx} to {starting_frame_idx+self.frame_patchify_n_frames-1} for patchifying')
             src = src[..., src_starting_frame_idx:src_starting_frame_idx+self.frame_patchify_n_frames]
             tar = tar[..., tar_starting_frame_idx:tar_starting_frame_idx+self.frame_patchify_n_frames]
-            src_tar_disp_union_mask = src_tar_disp_union_mask[..., src_starting_frame_idx:src_starting_frame_idx+self.frame_patchify_n_frames]
             if self.return_DENSE_disp:
                 if self.random_frame_gap > 0.5 and self.disp_type == 'Eulerian':
                     raise ValueError('random_frame_gap >= 1 not supported for return_DENSE_disp when disp_type is Eulerian')
@@ -277,7 +269,6 @@ class RegVolPairDataset(TorchDataset):
 
         datum['src'] = src
         datum['tar'] = tar
-        datum['src_tar_disp_union_mask'] = src_tar_disp_union_mask
         
         # copy all non-numpy and non-torch objects to datum_augmented
         for k, v in raw_datum.items():

@@ -6,7 +6,7 @@ from modules.data.dataset.slice_dataset import SliceDataset
 from modules.data.dataset.reg_pair_dataset import RegPairDataset
 from modules.data.dataset.reg_vol_pair_dataset import RegVolPairDataset
 from modules.data.dataset.video_volume_dataset import VideoVolDataset
-def build_datasets(datasets_configs, data_splits, all_config=None):
+def build_datasets(data_splits, datasets_configs, all_config=None):    
     datasets = {}
     for dataset_name, dataset_config in datasets_configs.items():
         data_split = data_splits[dataset_name]        
