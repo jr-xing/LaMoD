@@ -299,7 +299,8 @@ class RegressionTrainer(BaseTrainer):
 
         reg_forward_data = train_config.get('reg_forward_data', 'displacement_field')
         with torch.no_grad():
-            reg_pred_dict = reg_model(src, tar)
+            # reg_pred_dict = reg_model(src, tar)
+            reg_pred_dict = reg_model.encode(src, tar)
 
             if reg_forward_data in ['displacement_field', 'disp']:
                 reg_pred = reg_pred_dict['displacement'] # should have shape [N, 2, T, H, W] = [N, 2, T, 128, 128] 

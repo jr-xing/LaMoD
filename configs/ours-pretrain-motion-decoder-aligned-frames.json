@@ -87,7 +87,7 @@
         "disp_masking": true,
         "mask_padded_frames": true,
         "resize_before_regression": false,
-        "batch_size": 3,
+        "batch_size": 4,
         "epochs": 500,
         "enable_random_rotate": false,
         "random_rotate_prob_thres": 0.3,
