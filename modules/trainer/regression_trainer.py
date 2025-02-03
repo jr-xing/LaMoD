@@ -436,10 +436,14 @@ class RegressionTrainer(BaseTrainer):
             DENSE_disp_pred = ui
         else:
             raise ValueError(f'pred_type {regression_output_type} not implemented')
+        
+        DENSE_disp_GT = batch['DENSE_disp'].to(self.device)
         if train_config.get('resize_before_masking', False):
             DENSE_disp_pred = self.displacement_field_resizer_128(DENSE_disp_pred)
             DENSE_disp_GT = self.displacement_field_resizer_128(DENSE_disp_GT)
+        
         if train_config.get('disp_masking', False):
+            DENSE_mask = torch.abs(DENSE_disp_GT)> 1e-10
             DENSE_disp_pred = DENSE_disp_pred * DENSE_mask
         
         if train_config.get('mask_padded_frames', False):
