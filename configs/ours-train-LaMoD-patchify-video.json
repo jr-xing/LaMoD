@@ -107,13 +107,13 @@
     "training":{
         "seed": 2434,
         "scheme": "regression",
-        "batch_forward_method": "reg_disp_pred",
+        "batch_forward_method": "reg_disp_pred_diffusion",
         "reg_forward_data": "latent",
         "regression_output_type": "disp",
         "disp_masking": true,
         "mask_padded_frames": true,
         "resize_before_regression": false,
-        "batch_size": 3,
+        "batch_size": 64,
         "epochs": 500,
         "enable_random_rotate": false,
         "random_rotate_prob_thres": 0.3,
@@ -122,6 +122,18 @@
         "training_latent_model_epoch_interval": 30,
         "training_motion_decoder_epoch_interval": 30,
         "optimization": {
+            "latent": {
+                "type": "Adam",
+                "target": "latent",
+                "weight_decay": 5e-5,
+                "learning_rate": 1e-4,
+                "lr_scheduler": {
+                    "enable": true,
+                    "type": "StepLR",
+                    "step_size": 15,
+                    "gamma": 0.9
+                }
+            },
             "motion_regression": {
                 "type": "Adam",
                 "target": "motion_regression",
@@ -163,9 +175,26 @@
             "criterion": "EPE",
             "enable": false,
             "regularization_weight": 1
+        },
+        "denoising":
+        {
+            "type": "regression",
+            "prediction": "noise",
+            "target": "noise",
+            "weight": 1,
+            "criterion": "MSELoss",
+            "enable": true,
+            "regularization_weight": 1
         }
     },
     "evaluation": {
+        "noise_prediction_error": {
+            "enable": true,
+            "weight": 1,
+            "prediction": "noise",
+            "target": "noise",
+            "criterion": "MSE"
+        },
         "DENSE_disp_reconstruction_error": {
             "enable": true,
             "weight": 1,

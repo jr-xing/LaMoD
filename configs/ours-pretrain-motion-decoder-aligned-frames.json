@@ -48,7 +48,7 @@
         "registration":{
             "type": "RegNet",
             "skip_connect": false,
-            "imagesize": [16, 128, 128],
+            "imagesize": [40, 128, 128],
             "twoD_plus_T": true,
             "twoDT_to_2D_method": "slicing",
             "disp_generator": "Epdiff",
