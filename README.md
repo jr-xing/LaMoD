@@ -71,11 +71,13 @@ The trained LaMoD model significantly improves the accuracy of motion analysis i
 If you use this code or the LaMoD model in your research, please cite the following paper:
 
 ```bibtex
-@article{lamod2024,
-  title={LaMoD: Latent Motion Diffusion Model For Myocardial Strain Generation},
-  author={Xing, Jiarui and others},
-  journal={arXiv preprint arXiv:2407.02229},
-  year={2024}
+@inproceedings{xing2024lamod,
+  title={LaMoD: Latent Motion Diffusion Model for Myocardial Strain Generation},
+  author={Xing, Jiarui and Jayakumar, Nivetha and Wu, Nian and Wang, Yu and Epstein, Frederick H and Zhang, Miaomiao},
+  booktitle={International Workshop on Shape in Medical Imaging},
+  pages={164--177},
+  year={2024},
+  organization={Springer}
 }
 ```
 
