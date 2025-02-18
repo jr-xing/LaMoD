@@ -1,10 +1,12 @@
 # LaMoD: Latent Motion Diffusion Model For Myocardial Strain Generation
+![LaMoD-main-figure](https://github.com/user-attachments/assets/a7bc0592-1c3b-4a12-9e56-3541aa15cc16)
+> An overview of our proposed network framework. (A) Registration-based network to learn latent motion features represented by initial velocity fields. (B) Diffusion model in latent motion spaces.
 
 ## Introduction
 
 This repository contains the official PyTorch implementation of the paper **"LaMoD: Latent Motion Diffusion Model For Myocardial Strain Generation"**, which introduces a novel method for predicting highly accurate motion fields from standard cardiac magnetic resonance (CMR) imaging videos. The proposed Latent Motion Diffusion model (LaMoD) leverages a pre-trained registration network to extract latent motion features and employs a probabilistic latent diffusion model to reconstruct accurate motion fields, supervised by ground-truth motion data from displacement encoding with stimulated echoes (DENSE) CMR.
 
-The paper is available on [arXiv](https://arxiv.org/abs/2407.02229).
+The paper is available on [Springer](https://link.springer.com/chapter/10.1007/978-3-031-75291-9_13) / [arXiv](https://arxiv.org/abs/2407.02229).
 
 ## Installation
 
