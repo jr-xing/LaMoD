@@ -2,8 +2,11 @@
 **/__pycache__/
 *.pyc
 test_results/
-debug/
+
+debug/**/*.npy
+data/
 runs/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
