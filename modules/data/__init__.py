@@ -127,3 +127,73 @@ def mat2dict(matobj, as_dict=True, ndarray_to_list=False):
         return _check_keys(matobj, ndarray_to_list)
     # else:
     #     return data
+
+
+# from modules.data.datareader.DENSE_cine_IO import DENSECINEDataReader
+from modules.data.datareader.DENSE_cine_IO import DENSECINEDataReader
+from modules.data.processing.displacement_utils import extract_radial_tangent_components
+def load_data(data_config, full_config=None):
+    all_data = []
+    for data_reader_name, data_reader_info in data_config.items():
+        data_loader_name = data_reader_info['loading']['loader'] # e.g. DENSE_cine_IO
+        if data_loader_name == 'DENSE_cine_IO':
+            data_source = DENSECINEDataReader()
+        # elif data_loader_name == 'DENSE_IO':
+        #     data_source = DENSEDataReader()
+        else:
+            raise ValueError(f'Unknown data loader: {data_loader_name}')
+        
+        all_data_from_source, _ = data_source.load_record(data_reader_info, data_reader_name=data_reader_name)
+        # data_source_info['data_source'] = data_source
+        all_data += all_data_from_source
+    return all_data
+
+def load_data_with_raw(data_config, full_config=None, all_raw_data=None):
+    all_data = []
+    if all_raw_data is None:
+        no_raw_data_provided = True
+        all_raw_data = []
+    else:
+        no_raw_data_provided = False
+    for data_reader_name, data_reader_info in data_config.items():
+        data_loader_name = data_reader_info['loading']['loader'] # e.g. DENSE_cine_IO
+        if data_loader_name == 'DENSE_cine_IO':
+            data_source = DENSECINEDataReader()
+        # elif data_loader_name == 'DENSE_IO':
+        #     data_source = DENSEDataReader()
+        else:
+            raise ValueError(f'Unknown data loader: {data_loader_name}')
+        
+        all_data_from_source, all_raw_data_from_source = data_source.load_record(data_reader_info, data_reader_name=data_reader_name, raw_data=all_raw_data)
+        # data_source_info['data_source'] = data_source
+        all_data += all_data_from_source
+        if no_raw_data_provided:
+            all_raw_data += all_raw_data_from_source
+    return all_data, all_raw_data
+
+import re
+from pathlib import Path
+def glob_star(filename_pattern):
+    """
+    Returns a list of filenames that match the given pattern.
+    Only wildcard character '*' is supported in the pattern.
+
+    Parameters:
+    filename_pattern (str): The pattern to match filenames against. The pattern can contain a wildcard character '*'.
+
+    Returns:
+    list: A sorted list of filenames that match the pattern.
+
+    Examples:
+    >>> glob_star('/p/a*.txt')
+    ['/p/a1.txt', '/p/a2.txt']
+    """
+    # convert the filename_pattern to a regex
+    regex = re.compile(filename_pattern.replace('*', '.*'))
+    # get the directory of the filename_pattern
+    filename_dir = Path(filename_pattern).parent
+    # get all the files under the directory
+    filenames = [str(filename) for filename in list(filename_dir.glob('*'))]
+    # filter the filenames using the regex
+    filenames_matched = sorted([filename for filename in filenames if regex.match(filename)])
+    return filenames_matched

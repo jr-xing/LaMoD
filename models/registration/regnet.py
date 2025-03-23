@@ -511,32 +511,46 @@ class RegNet(nn.Module):
         else:
             raise ValueError(f'Unrecognized input shape: {src.shape}, {tar.shape}')
 
-    def inference(self, src: torch.Tensor, tar: torch.Tensor, frame_interval=8) -> torch.Tensor:
-        """Make inference on the input tensors.
-        The input tensors can be either 2D images or 2D+T image sequences.
-        """
-        if len(self.imagesize) == 2 and not self.twoD_plus_T:
-            # both src and tar are 2D images, and the network is also 2D
-            return self.forward_2D_input_2D_network(src, tar)
-        elif len(self.imagesize) == 2 and self.twoD_plus_T:
-            # both src and tar are 2D+T image sequences, but the network is 2D
-            return self.forward_2DT_input_2D_network(src, tar)
-        elif len(self.imagesize) == 3 and self.twoD_plus_T:
-            # both src and tar are 2D+T image sequences, and the network is 3D
-            for patch_idx in range(0, src.shape[2], frame_interval):
-                src_patch = src[:,:,patch_idx:patch_idx+frame_interval,:,:]
-                tar_patch = tar[:,:,patch_idx:patch_idx+frame_interval,:,:]
-                pred_dict = self.forward_2DT_input_3D_network(src_patch, tar_patch)
-                if patch_idx == 0:
-                    return_dict = pred_dict
-                else:
-                    for key in pred_dict.keys():
-                        return_dict[key] = torch.cat([return_dict[key], pred_dict[key]], dim=2)
-            return return_dict
-        elif len(self.imagesize) == 3 and not self.twoD_plus_T:
-            # both src and tar are 3D volumes, and the network is 3D
-            raise NotImplementedError(f'Not implemented yet for 3D input and 3D network')
+    # def inference(self, src: torch.Tensor, tar: torch.Tensor, frame_interval=8) -> torch.Tensor:
+    #     """Make inference on the input tensors.
+    #     The input tensors can be either 2D images or 2D+T image sequences.
+    #     """
+    #     if len(self.imagesize) == 2 and not self.twoD_plus_T:
+    #         # both src and tar are 2D images, and the network is also 2D
+    #         return self.forward_2D_input_2D_network(src, tar)
+    #     elif len(self.imagesize) == 2 and self.twoD_plus_T:
+    #         # both src and tar are 2D+T image sequences, but the network is 2D
+    #         return self.forward_2DT_input_2D_network(src, tar)
+    #     elif len(self.imagesize) == 3 and self.twoD_plus_T:
+    #         # both src and tar are 2D+T image sequences, and the network is 3D
+    #         for patch_idx in range(0, src.shape[2], frame_interval):
+    #             src_patch = src[:,:,patch_idx:patch_idx+frame_interval,:,:]
+    #             tar_patch = tar[:,:,patch_idx:patch_idx+frame_interval,:,:]
+    #             pred_dict = self.forward_2DT_input_3D_network(src_patch, tar_patch)
+    #             if patch_idx == 0:
+    #                 return_dict = pred_dict
+    #             else:
+    #                 for key in pred_dict.keys():
+    #                     return_dict[key] = torch.cat([return_dict[key], pred_dict[key]], dim=2)
+    #         return return_dict
+    #     elif len(self.imagesize) == 3 and not self.twoD_plus_T:
+    #         # both src and tar are 3D volumes, and the network is 3D
+    #         raise NotImplementedError(f'Not implemented yet for 3D input and 3D network')
             # return self.forward_3D_input_3D_network(src, tar)
+
+    def inference_2D_video(self, video: torch.Tensor):
+        """
+        Taking a 2D image sequence with shape [1, n_frames, H, W] or [n_videos, 1, n_frames, H, W] as input, where the first frames is taken as the source image and each of the later frames are taken as target images.
+        """
+        if video.ndim == 4:
+            video = video[None]
+        N, C, Nfr, H, W = video.shape
+        
+        src = video[:, :, 0:1].repeat(1, 1, Nfr-1, 1, 1)     # [N, 1, Nfr-1, H, W]
+        tar = video[:, :, 1:]                                # [N, 1, Nfr-1, H, W]
+
+        # Prepare models
+        return self.forward(src, tar)
 
 
     

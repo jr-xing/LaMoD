@@ -13,50 +13,23 @@ config = load_config_from_json(args.config_file)
 # override config file wandb setting if given command line parameter
 config = update_config_by_args(config, args)
 config = update_config_by_undefined_args(config, undefined_args)
-# config = load_config_from_json('/p/mmcardiac/Jerry/code/DENSE-guided-Cine-Registration/configs/training_configs/2023-10/2023-10-26-registraion-with-supervision-and-TOS-regression.json')
 
-# config['training']['batch_size'] = 70
 import json
 print(json.dumps(config, indent=4))
-# quit()
 
-# 2. load all data
-from modules.data import load_data
-all_data = load_data(config['data'])
-
-# append new data
-from modules.data.processing.create_additional_data import create_addition_data
-all_data = create_addition_data(all_data, config.get('additional_data', {}))
-
-# 3. data splitting
-# from modules.data.data_split import split_data
-# data_splits = split_data(all_data, config['data_split'])
+# 2. load all data splits
 train_split = {
     'info': {},
-    'data': [d for d in all_data if d['subject_id'].replace('-DENSE', '').replace('-Cine', '') not in config['data_split']['splits']['train']['exclude_patterns']]
+    'data': np.load(config['data']['train'], allow_pickle=True).tolist()
 }
 val_split = {
     'info': {},
-    'data': [d for d in all_data if d['subject_id'].replace('-DENSE', '').replace('-Cine', '') in config['data_split']['splits']['val']['patterns']]
+    'data': np.load(config['data']['val'], allow_pickle=True).tolist()
 }
 test_split = {
     'info': {},
-    'data': [d for d in all_data if d['subject_id'].replace('-DENSE', '').replace('-Cine', '') in config['data_split']['splits']['test']['patterns']]
+    'data': np.load(config['data']['test'], allow_pickle=True).tolist()
 }
-
-# remove the "overflow" data
-# n_non_zeros = 0
-# myo_mask_top_row_sum_non_zero_indices = []
-# for datum_idx, datum in enumerate(train_split['data']):
-#     myo_mask_top_row_sum = np.sum(np.abs(datum['DENSE_Lag_displacement_field'][0,0,:,0]))
-#     if myo_mask_top_row_sum > 2:
-#         n_non_zeros += 1
-#         # print(datum_idx, myo_mask_top_row_sum)
-#         myo_mask_top_row_sum_non_zero_indices.append(datum_idx)
-# # pop the data in myo_mask_top_row_sum_non_zero_indices
-# for i in reversed(myo_mask_top_row_sum_non_zero_indices):
-#     train_split['data'].pop(i)
-# print(f'popped {n_non_zeros} data with non-zero top row sum of myo mask: {myo_mask_top_row_sum_non_zero_indices}')
 
 data_splits = {
     'train': train_split,
@@ -96,25 +69,9 @@ for model_name, model_config in config['networks'].items():
 
 # 7. Training
 from modules.trainer import build_trainer
-# import numpy as np
-# from pathlib import Path
-# if config['others'].get('use_wandb', True):
-#     if hasattr(wandb_experiment, 'run'):
-#         saving_dir = Path(wandb_experiment.run.dir)
-#     else:
-#         saving_dir = Path(wandb_experiment.dir)
-# else:
-#     saving_dir = Path(config['saving'].get('saving_dir', './test_results'))
-#     saving_dir.mkdir(parents=True, exist_ok=True)
-# print('experiment results saving dir: ', saving_dir)
 use_wandb=config['others'].get('use_wandb', True)
 if use_wandb:    
-    # wandb_base_dir = './exp_results'
-    # wandb_base_dir = '/p/miauva/data/Jerry/exp-results'
     wandb_base_dir = '/scratch/jx8fh/exp-results'
-    # wandb_base_dir = wandb_base_dir
-    # exp_random_ID = ''.join(random.choice(string.ascii_lowercase) for i in range(5))
-    # exp_name = full_config['info'].get('experiment_name', 'unnamed') + f'-{exp_random_ID}'
     exp_name = config['info'].get('experiment_name', 'unnamed')
     exp_name_with_date = datetime.datetime.now().strftime('%Y-%m-%d')+ '-' + exp_name
     # use_wandb = full_config['others'].get('use_wandb', False)
@@ -122,10 +79,6 @@ if use_wandb:
     wandb_path.mkdir(parents=True, exist_ok=True)
     
     wandb_visualize_interval = config['others'].get('wandb_visualize_interval', -1) # -1 means no visualization
-    # if wandb_visualize_interval is a float number, it means the interval is a fraction of the total number of epochs
-    # convert it to an integer
-    # if wandb_visualize_interval > 0 and isinstance(wandb_visualize_interval, float):
-    #     wandb_visualize_interval = int(wandb_visualize_interval * used_train_config['epochs'])
     
     wandb_experiment = wandb.init( 
         project = config['info'].get('project_name', 'trials'),
@@ -138,10 +91,7 @@ if use_wandb:
         mode='online' if use_wandb else 'disabled')
     exp_save_dir = wandb.run.dir
 else:
-    # exp_save_dir = Path(used_full_config['others']['save_dir'])
     current_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    # exp_save_dir = Path('./test_results') / f'{current_time}-{config["info"]["experiment_name"]}'
-    # exp_save_dir = Path('/p/miauva/data/Jerry/exp-trial-results') / f'{current_time}-{config["info"]["experiment_name"]}'
     exp_save_dir = Path('/scratch/jx8fh/exp-trial-results') / f'{current_time}-{config["info"]["experiment_name"]}'
     wandb_experiment = None
 
@@ -187,17 +137,8 @@ test_pred, test_performance_dict, _ = trainer.test(
     target_dataset='test',
     mode='test')
 
-# if config['training'].get('full_test_inference', False):
-#     inference_result_dicts = trainer.test_inference(data_splits['test']['data'], 
-#                            trained_models, 
-#                            test_config=config['training'], 
-#                            wandb_experiment=wandb_experiment)
-
 # 9. Save results
 # save (val and) test predictions as npy file
-
-# save_preds = config['saving'].get('save_prediction', False)
-# if save_preds:
 import numpy as np
 data_keys_to_pop = config['saving'].get('data_keys_to_pop', [])
 for test_datum in test_pred:
@@ -209,9 +150,6 @@ test_save_filename = config['saving'].get('test_save_filename', 'test_pred.npy')
 # np.save(Path(saving_dir, val_save_filename), val_pred)
 np.save(Path(exp_save_dir, test_save_filename), test_pred)
 
-# if config['training'].get('full_test_inference', False):
-#     inference_save_filename = config['saving'].get('inference_save_filename', 'test_inference_full.npy')
-#     np.save(Path(exp_save_dir, inference_save_filename), inference_result_dicts)
 
 # 10. save all models
 for model_name, model in trained_models.items():

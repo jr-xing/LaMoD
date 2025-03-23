@@ -17,7 +17,7 @@ from modules.data.processing.rotation import rot_img_seq, rotate_displacement_fi
 # import lagomorph as lm
 # from train_denoisier_video_diffusion import latent_1_std, latent_std_scaler, latent_log_scaler, latent_plus_mins_1_scaler, latent_standardize, latent_1_std_reverse, latent_std_reverse, latent_log_reverse, latent_plus_mins_1_reverse, latent_unstandardize
 from modules.trainer.normalize import latent_1_std, latent_std_scaler, latent_log_scaler, latent_plus_mins_1_scaler, latent_standardize, latent_1_std_reverse, latent_std_reverse, latent_log_reverse, latent_plus_mins_1_reverse, latent_unstandardize
-
+from modules.data import check_dict
 try:
     import wandb
 except:
@@ -129,8 +129,12 @@ class RegressionTrainer(BaseTrainer):
             return self.batch_forward_whole_vol(batch, models, loss_name_prefix, mode, train_config, full_config, curr_epoch)
         elif batch_forward_method == 'reg_disp_pred':
             # First extract latent motion features and then reconstruct the final motion
-            # No diffusion model included. This is just for pre-training the motion encoder.
+            # No diffusion model included. This is just for pre-training the motion decoder.
             return self.batch_forward_reg_disp_pred(batch, models, loss_name_prefix, mode, train_config, full_config, curr_epoch)    
+        elif batch_forward_method == 'reg_diffusion':
+            # First  extract latent motion features, then refine the features throught the diffusion process
+            # Displacement field prediction is not included. This is just for pre-training the diffusion model.
+            return self.batch_forward_reg_diffusion(batch, models, loss_name_prefix, mode, train_config, full_config, curr_epoch)
         elif batch_forward_method == 'reg_disp_pred_diffusion':
             # First extract latent motion features, then refine the features throught the diffusion process, and finally reconstruct the final motion.
             # This is for jointly training our proposed LaMoD Method
@@ -252,11 +256,10 @@ class RegressionTrainer(BaseTrainer):
         # pred_dict = {f'{loss_name_prefix}/{k}': v for k, v in pred_dict.items()}
         return total_loss, batch_loss_dict, batch_error_dict, pred_dict, target_dict
     
-
-    def batch_forward_reg_disp_pred_diffusion(self, batch, models, loss_name_prefix, mode='train', train_config={}, full_config={}, curr_epoch=-1):        
+    def __batch_forward_reg_diffusion(self, batch, models, loss_name_prefix, mode='train', train_config={}, full_config={}, curr_epoch=-1):
         reg_model = models['registration']
         diffusion_model = models['latent']
-        motion_regression_model = models[train_config.get('reg_model_name', 'motion_regression')]
+        
 
         # --------------------------------------------------#
         # ------------------ Registration ------------------#
@@ -296,7 +299,8 @@ class RegressionTrainer(BaseTrainer):
 
         reg_forward_data = train_config.get('reg_forward_data', 'displacement_field')
         with torch.no_grad():
-            reg_pred_dict = reg_model(src, tar)
+            # reg_pred_dict = reg_model(src, tar)
+            reg_pred_dict = reg_model.encode(src, tar)
 
             if reg_forward_data in ['displacement_field', 'disp']:
                 reg_pred = reg_pred_dict['displacement'] # should have shape [N, 2, T, H, W] = [N, 2, T, 128, 128] 
@@ -355,6 +359,56 @@ class RegressionTrainer(BaseTrainer):
         # --------------------------------------------------#
         if train_config.get('resize_before_regression', False):
             z_denoised = self.displacement_field_resizer(z_denoised)
+        
+        return noise, pred_noise, z_denoised, src, tar, reg_pred, reg_pred_disp
+
+    def batch_forward_reg_diffusion(self, batch, models, loss_name_prefix, mode='train', train_config={}, full_config={}, curr_epoch=-1):
+        noise, pred_noise, z_denoised, src, tar, reg_pred, reg_pred_disp = self.__batch_forward_reg_diffusion(batch, models, loss_name_prefix, mode, train_config, full_config, curr_epoch)
+        
+        if train_config.get('mask_padded_frames', False):
+            # print('Masking Padded!')
+            vol_ori_n_frames = batch['ori_n_frames']
+            for i, ori_n_frames in enumerate(vol_ori_n_frames):
+                pred_noise[i, :, ori_n_frames:] = 0
+                noise[i, :, ori_n_frames:] = 0
+        
+        pred_dict = {
+            'latent': z_denoised,
+            'reg_disp': reg_pred_disp,
+            'noise': pred_noise,
+        }
+        target_dict = {
+            'src': src,
+            'tar': tar,
+            'noise': noise,
+            'latent': reg_pred
+        }
+
+        
+        # total_loss = 0
+        total_loss, losses_values_dict = self.loss_calculator(pred_dict, target_dict)
+        with torch.no_grad():
+            total_error, error_values_dict = self.evaluator(pred_dict, target_dict)
+
+        # update the epoch loss dict
+        batch_loss_dict = {}
+        for loss_name, loss_value in losses_values_dict.items():
+            record_name = f'{loss_name_prefix}/{loss_name}'
+            batch_loss_dict[record_name] = loss_value
+        
+        # update the epoch error 
+        batch_error_dict = {}
+        for error_name, error_value in error_values_dict.items():
+            record_name = f'{loss_name_prefix}/{error_name}'
+            batch_error_dict[record_name] = error_value
+
+        # update the pred_dict key names by adding the loss_name_prefix
+        # pred_dict = {f'{loss_name_prefix}/{k}': v for k, v in pred_dict.items()}
+        return total_loss, batch_loss_dict, batch_error_dict, pred_dict, target_dict    
+
+    def batch_forward_reg_disp_pred_diffusion(self, batch, models, loss_name_prefix, mode='train', train_config={}, full_config={}, curr_epoch=-1):                
+        noise, pred_noise, z_denoised, src, tar, reg_pred, reg_pred_disp = self.__batch_forward_reg_diffusion(batch, models, loss_name_prefix, mode, train_config, full_config, curr_epoch)
+        motion_regression_model = models[train_config.get('reg_model_name', 'motion_regression')]
         regression_output = motion_regression_model(z_denoised)
         # pred_noise = pred_noise# * src_tar_union_mask
 
@@ -382,10 +436,14 @@ class RegressionTrainer(BaseTrainer):
             DENSE_disp_pred = ui
         else:
             raise ValueError(f'pred_type {regression_output_type} not implemented')
+        
+        DENSE_disp_GT = batch['DENSE_disp'].to(self.device)
         if train_config.get('resize_before_masking', False):
             DENSE_disp_pred = self.displacement_field_resizer_128(DENSE_disp_pred)
             DENSE_disp_GT = self.displacement_field_resizer_128(DENSE_disp_GT)
+        
         if train_config.get('disp_masking', False):
+            DENSE_mask = torch.abs(DENSE_disp_GT)> 1e-10
             DENSE_disp_pred = DENSE_disp_pred * DENSE_mask
         
         if train_config.get('mask_padded_frames', False):
@@ -394,6 +452,8 @@ class RegressionTrainer(BaseTrainer):
             for i, ori_n_frames in enumerate(vol_ori_n_frames):
                 DENSE_disp_pred[i, :, ori_n_frames:] = 0
                 DENSE_disp_GT[i, :, ori_n_frames:] = 0
+                pred_noise[i, :, ori_n_frames:] = 0
+                noise[i, :, ori_n_frames:] = 0
 
         pred_dict = {
             'reg_disp': reg_pred_disp,

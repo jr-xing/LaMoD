@@ -4,12 +4,12 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
-# try:
-#     import lagomorph as lm
-#     from lagomorph import adjrep 
-#     from lagomorph import deform 
-# except:
-#     Warning("lagomorph is not installed. This may cause errors when using the Epdiff approach.")
+try:
+    import lagomorph as lm
+    from lagomorph import adjrep 
+    from lagomorph import deform 
+except:
+    Warning("lagomorph is not installed. This may cause errors when using the Epdiff approach.")
 
 
 class Epdiff():

@@ -6,7 +6,7 @@
 # from modules.trainer.joint_registration_strainmat_LMA import JointRegisterStrainmatLMATrainer
 from modules.trainer.base_trainer import BaseTrainer
 from modules.trainer.regression_trainer import RegressionTrainer
-# from modules.trainer.registration_trainer import RegTrainer
+from modules.trainer.registration_trainer import RegTrainer
 # from modules.trainer.ae_trainer import AETrainer
 # from modules.trainer.DENSE_disp_pred_trainer import DENSEDispPredTrainer
 # from modules.trainer.DENSE_disp_pred_naive_trainer import DENSEDispPredNaiveTrainer

@@ -1,0 +1,167 @@
+{
+    "data":{
+        "DENSE_filenames": "/scratch/jx8fh/2024-03-24-DENSE-from-Yu-SUBSET-VOL-*-OF-8.npy",
+        "train_subject_exclude_patterns": ["16", "21", "22", "23", "25", "26", "P112", "115", "CT06", "CT18", "CT50_10-21-2015", "CT51_04-14-2016", "P107", "P110_patient", "Emory_12", "Emory_13", "Emory_01", "OB024", "OB025", "OB026", "OB027", "OB028", "OB029", "UVA_02", "Br_Data14_ScanA_UVA", "Br_Data15_ScanA_UVA", "Br_Data6_ScanA_UVA", "CT41_03-24-2016", "CT42_09-18-2015", "CT45_03-24-2016", "CT46_10-06-2015", "StFrancis_DENSE14A", "StFrancis_DENSE15A", "Lyon69_lav_lu", "Lyon69_mar_lu", "Lyon69_mar_mo", "17","P117", "124", "125", "CRT104", "122", "136", "146", "033", "CT01", "CT03", "CT22", "CT40", "Emory_04", "Emory_06", "Emory_07", "Lyon_d04_scanA", "OB015", "OB016", "OB017", "OB018", "OB019", "UVA_04", "UVA_05", "UVA_07", "UVA_08_A_U1", "UVA_09_A_U1", "UVA_11_A_U1", "Lyon_Cha_Jea", "Lyon_Ene_Alex", "UVA_05192021","StFrancis_DENSE10A", "StFrancis_DENSE11A", "Lyon69_ene_al"],
+        "val_subject_patterns": ["16", "21", "22", "23", "25", "26", "P112", "115", "CT06", "CT18", "CT50_10-21-2015", "CT51_04-14-2016", "P107", "P110_patient", "Emory_12", "Emory_13", "Emory_01", "OB024", "OB025", "OB026", "OB027", "OB028", "OB029", "UVA_02", "Br_Data14_ScanA_UVA", "Br_Data15_ScanA_UVA", "Br_Data6_ScanA_UVA", "CT41_03-24-2016", "CT42_09-18-2015", "CT45_03-24-2016", "CT46_10-06-2015", "StFrancis_DENSE14A", "StFrancis_DENSE15A", "Lyon69_lav_lu", "Lyon69_mar_lu", "Lyon69_mar_mo"],
+        "test_subject_patterns": ["17","P117", "124", "125", "CRT104", "122", "136", "146", "033", "CT01", "CT03", "CT22", "CT40", "Emory_04", "Emory_06", "Emory_07", "Lyon_d04_scanA", "OB015", "OB016", "OB017", "OB018", "OB019", "UVA_04", "UVA_05", "UVA_07", "UVA_08_A_U1", "UVA_09_A_U1", "UVA_11_A_U1", "Lyon_Cha_Jea", "Lyon_Ene_Alex", "UVA_05192021","StFrancis_DENSE10A", "StFrancis_DENSE11A", "Lyon69_ene_al"]
+
+    },
+    "datasets":{
+        "train": {
+            "type": "RegVolPairDataset",
+            "data_split": [
+                "train"
+            ],
+            "myo_mask_key": "myo_masks",
+            "return_DENSE_disp": true,            
+            "disp_type": "Lagrangian",
+            "DENSE_disp_key": "DENSE_disp",
+            "frame_aligning_method": "constant",
+            "frame_aligning_n_frames": 40
+        },
+        "val": {
+            "type": "RegVolPairDataset",
+            "data_split": [
+                "val"
+            ],
+            "myo_mask_key": "myo_masks",
+            "return_DENSE_disp": true,
+            "frame_aligning_method": "constant",
+            "frame_aligning_n_frames": 40,
+            "disp_type": "Lagrangian",
+            "DENSE_disp_key": "DENSE_disp"
+        },
+        "test": {
+            "type": "RegVolPairDataset",
+            "data_split": [
+                "test"
+            ],
+            "myo_mask_key": "myo_masks",
+            "return_DENSE_disp": true,
+            "frame_aligning_method": "constant",
+            "frame_aligning_n_frames": 40,
+            "disp_type": "Lagrangian",
+            "DENSE_disp_key": "DENSE_disp"
+        }
+    },    
+    "networks": {
+        "registration":{
+            "type": "RegNet",
+            "skip_connect": false,
+            "imagesize": [40, 128, 128],
+            "twoD_plus_T": true,
+            "twoDT_to_2D_method": "slicing",
+            "disp_generator": "Epdiff",
+            "unet_output": "velocity",
+            "max_pool": [[1,2,2],[1,2,2],[1,2,2],[1,2,2]],
+            "nb_features": "[[8, 16, 16], [16, 16, 16, 8, 8]]",
+            "load_pretrained": true,
+            "encoder_only": false,
+            "pretrained_model_path": "checkpoints/ours_registration.pth"
+        },
+        "motion_regression":{
+            "type": "DiffusionDecoder",
+            "z_channels": 16,
+            "in_channels": 16,
+            "ch": 32,
+            "out_ch": 2,
+            "num_res_blocks": 2,
+            "attn_resolutions": [16],
+            "resolution": 128,
+            "dim": 3,
+            "tanh_out": false,
+            "drouput": 0.3,
+            "out_scaling_factor": 1,
+            "upsampling_times": 2,
+            "upsampling_scaling_factor": [1.0, 3.0, 3.0],
+            "load_pretrained": true,
+            "pretrained_model_path": "checkpoints/ours_motion_regression.pth"
+        }
+    },
+    "training":{
+        "seed": 2434,
+        "scheme": "regression",
+        "batch_forward_method": "reg_disp_pred",
+        "reg_forward_data": "latent",
+        "regression_output_type": "disp",
+        "disp_masking": true,
+        "mask_padded_frames": true,
+        "resize_before_regression": false,
+        "batch_size": 4,
+        "epochs": 500,
+        "enable_random_rotate": false,
+        "random_rotate_prob_thres": 0.3,
+        "epochs_without_improvement_tolerance": 30,
+        "save_best_model_interval": -1,
+        "training_latent_model_epoch_interval": 30,
+        "training_motion_decoder_epoch_interval": 30,
+        "optimization": {
+            "motion_regression": {
+                "type": "Adam",
+                "target": "motion_regression",
+                "weight_decay": 1e-5,
+                "learning_rate": 1e-4,
+                "lr_scheduler": {
+                    "enable": true,
+                    "type": "StepLR",
+                    "step_size": 15,
+                    "gamma": 0.9
+                }
+            }
+        }
+    },
+    "losses": {
+        "DENSE_disp_reconstruction_L1":{
+            "type": "regression",
+            "prediction": "DENSE_disp",
+            "target": "DENSE_disp",
+            "weight": 1,
+            "criterion": "l1",
+            "enable": true,
+            "regularization_weight": 1
+        },
+        "DENSE_disp_reconstruction_MSE":{
+            "type": "regression",
+            "prediction": "DENSE_disp",
+            "target": "DENSE_disp",
+            "weight": -1,
+            "criterion": "MSE",
+            "enable": false,
+            "regularization_weight": 1
+        },
+        "DENSE_disp_reconstruction_EPE":{
+            "type": "regression",
+            "prediction": "DENSE_disp",
+            "target": "DENSE_disp",
+            "weight": 1,
+            "criterion": "EPE",
+            "enable": false,
+            "regularization_weight": 1
+        }
+    },
+    "evaluation": {
+        "DENSE_disp_reconstruction_error": {
+            "enable": true,
+            "weight": 1,
+            "prediction": "DENSE_disp",
+            "target": "DENSE_disp",
+            "criterion": "MSE"
+        }
+    },
+    "saving": {
+        "data_keys_to_pop": ["velocity_pred", "deformed_source_pred"],
+        "save_final_model": true,
+        "save_best_only": true,
+        "save_model_num": 3,
+        "save_prediction_method": "single_file",
+        "performance_log_dir": "/p/mmcardiac/Resaerch_projects/cardiac/cardiac-segmentation/cardiac-segmentation-2/codeV6/exp_results/wandb_sweep_logs",
+        "save_checkpoint": true,
+        "save_prediction": false,
+        "save_KeyboardInterrupt": true
+    },
+    "others": {
+        "use_wandb": true,
+        "wandb_sweep_file": "./configs/test_wandb_sweep.yaml",
+        "wandb_visualize_interval": 0.1
+    }
+}

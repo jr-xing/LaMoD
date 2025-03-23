@@ -1,11 +1,12 @@
-# debug/
-checkpoints/*.pth
-*.pyc
 *.pth
 **/__pycache__/
+*.pyc
 test_results/
+
 debug/**/*.npy
 data/
+runs/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
