@@ -10,11 +10,11 @@ from models.registration.svf import Svf, SpatialTransformer#, Grad
 
 from timeit import default_timer
 
-try:
-    import lagomorph as lm
-    from models.registration.EpdiffLib import Epdiff
-except:
-    Warning("lagomorph is not installed. This may cause errors when using the Epdiff approach.")
+# try:
+import lagomorph as lm
+from models.registration.EpdiffLib import Epdiff
+# except:
+#     Warning("lagomorph is not installed. This may cause errors when using the Epdiff approach.")
 
 ################################################################
 # fourier layer

@@ -5,6 +5,9 @@ test_results/
 debug/
 runs/
 data/
+debug
+cardiac_toolkit_to_be_organized 
+cardiac_toolkit_to_be_organized/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
